@@ -1,0 +1,71 @@
+import streamlit as st
+from PIL import Image, ImageFilter, ImageDraw
+from io import BytesIO
+
+# 页面配置：设置标题和图标，布局设为居中
+st.set_page_config(page_title="圆角模糊工具", page_icon="🖼️")
+
+st.title("🖼️ 照片圆角模糊工具")
+st.markdown("上传照片，自动生成类似相框的模糊背景效果。")
+
+# --- 侧边栏：参数设置 ---
+with st.sidebar:
+    st.header("参数调节")
+    # 设置默认值，范围根据经验调整
+    blur_radius = st.slider("背景模糊程度 (Blur)", 0, 100, 50, help="数值越大，背景越模糊")
+    corner_radius = st.slider("圆角大小 (Radius)", 0, 300, 80, help="数值越大，角越圆")
+    
+    st.info("💡 提示：调整参数后图片会自动更新。")
+
+# --- 主体逻辑 ---
+uploaded_file = st.file_uploader("点击上传图片 (支持 JPG/PNG)", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    try:
+        # 1. 读取图片
+        original_image = Image.open(uploaded_file).convert("RGBA")
+        
+        # 显示正在处理（虽然通常很快）
+        with st.spinner('正在处理图片...'):
+            width, height = original_image.size
+
+            # 2. 生成模糊背景
+            blurred_background = original_image.filter(ImageFilter.GaussianBlur(blur_radius))
+
+            # 3. 创建圆角遮罩
+            # 这里的 'L' 模式表示灰度图，255是白色（不透明），0是黑色（透明）
+            mask = Image.new("L", (width, height), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.rounded_rectangle((0, 0, width, height), radius=corner_radius, fill=255)
+
+            # 4. 合成最终图像
+            final_image = Image.new("RGBA", (width, height))
+            final_image.paste(blurred_background, (0, 0))
+            # 将原图通过遮罩粘贴上去
+            final_image.paste(original_image, (0, 0), mask=mask)
+
+            # 5. 转换为字节流以便下载和显示
+            buf = BytesIO()
+            final_image.save(buf, format="PNG")
+            byte_im = buf.getvalue()
+
+        # --- 结果展示 ---
+        st.success("处理完成！")
+        
+        # 在手机上展示图片，use_container_width=True 会让图片自动适应手机屏幕宽度
+        st.image(final_image, caption="效果预览", use_container_width=True)
+
+        # 下载按钮
+        st.download_button(
+            label="⬇️ 下载处理后的图片",
+            data=byte_im,
+            file_name="processed_image.png",
+            mime="image/png",
+            type="primary" # 突出显示按钮
+        )
+
+    except Exception as e:
+        st.error(f"发生错误：{e}")
+else:
+    # 这里的提示只有在未上传时显示
+    st.info("👆 请先在上方上传一张图片")
