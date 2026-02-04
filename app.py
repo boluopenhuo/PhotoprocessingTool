@@ -4,7 +4,7 @@ from io import BytesIO
 import requests
 
 # --- 1. 页面基础配置 ---
-st.set_page_config(page_title="极简艺术工坊", page_icon="🍂", layout="centered")
+st.set_page_config(page_title="安安边框水印", page_icon="🍂", layout="centered")
 
 # --- 2. 核心视觉样式 (画廊风定制) ---
 gallery_style = """
@@ -163,7 +163,7 @@ PARAMS = {
 }
 
 # --- 4. 界面布局 ---
-st.title("云端·艺术工坊")
+st.title("质感边框")
 st.markdown("定格光影 · 赋予照片呼吸感")
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -258,6 +258,7 @@ else:
 
     except Exception as e:
         st.error(f"发生错误：{e}")
+
 
 
 
