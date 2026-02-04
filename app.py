@@ -31,22 +31,21 @@ nft_style = """
         border-color: #58a6ff;
         background-color: #1c2128;
     }
-    /* 隐藏组件自带的 Label (因为我们在外面自己写了提示) */
+    /* 隐藏外部 Label */
     [data-testid='stFileUploader'] label {
         display: none;
     }
 
-    /* === 🔥 核心汉化黑科技 (CSS Hack) === */
+    /* === 🔥 核心汉化补丁 V2.0 (更强力的覆盖) === */
     
-    /* 1. 针对 "Browse files" 按钮 */
+    /* 1. 右边按钮 (你已经成功了，保持原样) */
     [data-testid='stFileUploader'] button {
-        visibility: hidden; /* 先把原来的按钮藏起来 */
+        visibility: hidden;
         position: relative;
         width: 120px !important;
     }
-    /* 再用伪元素手绘一个中文按钮 */
     [data-testid='stFileUploader'] button::after {
-        content: "浏览本地文件";  /* <--- 这里修改按钮文字 */
+        content: "浏览本地文件";
         visibility: visible;
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -61,34 +60,39 @@ nft_style = """
         cursor: pointer;
         border: 1px solid #ccc;
     }
-    [data-testid='stFileUploader'] button:hover::after {
-        background-color: #f0f0f0;
-        border-color: #aaa;
+
+    /* 2. 左边文字 (关键修改点) */
+    
+    /* 第一步：把原来所有的英文文字元素彻底隐藏 */
+    /* span 对应 "Drag and drop..." */
+    [data-testid='stFileUploader'] section > div > div > span {
+        display: none !important;
+    }
+    /* small 对应 "Limit 200MB..." */
+    [data-testid='stFileUploader'] small {
+        display: none !important;
+    }
+    /* 为了防止漏网之鱼，把 div 下的第一层 div 也隐藏（某些版本可能是 div） */
+    [data-testid='stFileUploader'] section > div > div > div {
+        display: none !important;
     }
 
-    /* 2. 针对 "Drag and drop file here" 提示语 */
-    /* 把容器内的所有文字变透明，但保留图标颜色 */
-    [data-testid='stFileUploader'] section > div > div {
-        color: transparent !important; 
-    }
-    /* 补上中文提示 */
-    [data-testid='stFileUploader'] section > div > div::after {
-        content: "支持拖拽照片到这里"; /* <--- 这里修改提示文字 */
-        color: #c9d1d9; /* 恢复文字颜色 */
+    /* 第二步：在空白处重新写上中文 */
+    /* 我们直接在文字容器上画字 */
+    [data-testid='stFileUploader'] section > div > div::before {
+        content: "支持拖拽照片到这里"; 
+        color: #c9d1d9; 
         font-size: 16px;
         font-weight: bold;
         display: block;
-        margin-top: -15px; /* 调整位置盖住原来的英文 */
+        margin-top: 5px; 
     }
-    /* 恢复 SVG 图标的颜色 (因为父级transparent了，这里要强制指定) */
-    [data-testid='stFileUploader'] section > div > div > svg {
+    
+    /* 修复图标颜色 (因为我们没有隐藏图标的父级，图标应该还在，这里加固一下) */
+    [data-testid='stFileUploader'] section > div > svg {
         color: #58a6ff !important;
         fill: #58a6ff !important;
-    }
-
-    /* 3. 彻底隐藏 "Limit 200MB..." 这行小字 */
-    [data-testid='stFileUploader'] small {
-        display: none !important;
+        margin-right: 10px; /* 给图标和文字拉开点距离 */
     }
 
     /* === 下载按钮样式 === */
@@ -210,3 +214,4 @@ else:
 
     except Exception as e:
         st.error(f"发生错误：{e}")
+
