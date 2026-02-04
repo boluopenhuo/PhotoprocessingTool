@@ -174,24 +174,22 @@ st.markdown("<br>", unsafe_allow_html=True)
 uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is None:
-    # --- 这里是新增的底部展示区 (只在未上传时显示) ---
+    # --- 底部展示区 ---
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("---") # 优雅的分割线
-    st.markdown("#### 🎞️ 效果演示") # 小标题
+    st.markdown("---") 
+    st.markdown("#### 🎞️ 效果演示") 
     
     col_a, col_b = st.columns(2)
     
     with col_a:
-        # 这里放原图示例 (URL)
-        st.image("https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", 
-                 caption="原片直出", use_container_width=True)
+        # 直接写刚才上传到 GitHub 的文件名
+        # 注意：文件名必须完全一致，包括大小写！
+        st.image("demo_original", caption="原图", use_container_width=True)
                  
     with col_b:
-        # 这里放处理后的效果图 (为了演示，我这里暂时放了一张类似的图)
-        # 💡 【重要】请在你的工具做好后，截一张图，把下面这个链接换成你自己的截图链接！
-        st.image("https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", 
-                 caption="艺术装裱", use_container_width=True)
+        # 直接写文件名
+        st.image("demo_processed", caption="效果图", use_container_width=True)
     
     st.markdown("<br><p style='font-size:12px; opacity:0.6'>上传照片，即可获得右侧同款画廊级质感</p>", unsafe_allow_html=True)
 
