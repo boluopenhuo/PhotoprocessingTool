@@ -26,14 +26,12 @@ gallery_style = """
         border-bottom: 1px solid #E0DCD6;
     }
     
-    /* 通用文字样式 */
     .stMarkdown p, .stMarkdown h4 {
         font-family: "Songti SC", "SimSun", serif !important;
         text-align: center;
         color: #6B6158 !important;
     }
     
-    /* 演示区的标题 */
     h4 {
         margin-top: 30px;
         font-weight: normal;
@@ -56,13 +54,16 @@ gallery_style = """
     }
     [data-testid='stFileUploader'] label { display: none; }
 
-    /* === 🔥 汉化补丁 (保持不变) === */
-    [data-testid='stFileUploader'] button {
+    /* === 🔥 汉化补丁修复版 (精准打击) === */
+    
+    /* 1. 仅针对“浏览文件”的主按钮进行汉化 */
+    /* 增加 [data-testid='baseButton-secondary'] 确保只选中主按钮，不选中删除按钮 */
+    [data-testid='stFileUploader'] [data-testid='baseButton-secondary'] {
         visibility: hidden;
         position: relative;
         width: 140px !important;
     }
-    [data-testid='stFileUploader'] button::after {
+    [data-testid='stFileUploader'] [data-testid='baseButton-secondary']::after {
         content: "选择影像文件";
         visibility: visible;
         position: absolute;
@@ -80,12 +81,12 @@ gallery_style = """
         border: none;
         transition: all 0.3s;
     }
-    [data-testid='stFileUploader'] button:hover::after {
+    [data-testid='stFileUploader'] [data-testid='baseButton-secondary']:hover::after {
         background-color: #E6E2DC;
         color: #2C241B;
     }
 
-    /* 隐藏文字与重写 */
+    /* 2. 提示文字隐藏与重写 */
     [data-testid='stFileUploader'] section > div > div > span,
     [data-testid='stFileUploader'] small,
     [data-testid='stFileUploader'] section > div > div > div {
@@ -135,14 +136,10 @@ gallery_style = """
         color: #5C5248 !important; 
         font-family: "Songti SC", serif;
     }
-    
-    /* 给所有展示的图片加白边，模拟相框 */
     img { 
         border: 8px solid #FFFFFF;
         box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
     }
-    
-    /* 分隔线样式 */
     hr {
         border-color: #E0DCD6;
         margin-top: 40px;
@@ -261,5 +258,6 @@ else:
 
     except Exception as e:
         st.error(f"发生错误：{e}")
+
 
 
