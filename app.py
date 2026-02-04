@@ -8,9 +8,9 @@ st.title("🖼️ 圆角模糊相框工具")
 st.markdown("上传照片，为您生成自适应比例的模糊圆角相框。")
 
 # --- 核心逻辑 0：初始化默认参数 (使用 Session State) ---
-# 定义默认值字典
+# 【修改点】这里将 border_scale 的默认值改为了 0.1
 default_values = {
-    'border_scale': 0.05,
+    'border_scale': 0.1,  # 默认边框比例调整为 10%
     'blur_radius': 100,
     'corner_radius': 150
 }
@@ -29,33 +29,30 @@ def reset_defaults():
 with st.sidebar:
     st.header("参数调节")
     
-    # 【改动1】添加“恢复默认”按钮，绑定回调函数
-    # use_container_width=True 让按钮铺满侧边栏宽度，更好看
+    # 恢复默认按钮
     st.button("↺ 恢复默认设置", on_click=reset_defaults, use_container_width=True)
     
-    st.divider() # 添加一条分割线
+    st.divider()
     
-    # 【改动2】给滑块绑定 key，这样它们的值就会受 session_state 控制
-    # 注意：绑定 key 后，不需要再写 value=xxx，它会自动读取 session_state[key]
-    
+    # 滑块控件
     border_scale = st.slider(
         "边框粗细比例 (Scale)", 
         0.0, 0.3, step=0.01, 
-        key='border_scale',  # 绑定状态
+        key='border_scale',
         help="边框宽度占画面短边的比例"
     )
     
     blur_radius = st.slider(
         "背景模糊程度 (Blur)", 
         0, 200, 
-        key='blur_radius',   # 绑定状态
+        key='blur_radius',
         help="数值越大，背景越模糊"
     )
     
     corner_radius = st.slider(
         "圆角大小 (Radius)", 
         0, 500, 
-        key='corner_radius'  # 绑定状态
+        key='corner_radius'
     )
     
     st.info("💡 提示：点击上方按钮可一键还原参数。")
