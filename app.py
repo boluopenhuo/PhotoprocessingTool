@@ -200,7 +200,7 @@ PARAMS = {
     'border_scale': 0.09,
     'blur_radius': 100,
     'corner_radius': 90,
-    'shadow_blur': 20,
+    'shadow_blur': 30,
     'shadow_opacity': 0.2,
     'shadow_offset': 0
 }
@@ -396,6 +396,7 @@ else:
 
     # 底部版权
     st.markdown("<div class='bottom-text'>Designed for Photography · 2026</div>", unsafe_allow_html=True)
+
 
 
 
