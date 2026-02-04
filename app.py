@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image, ImageFilter, ImageDraw
 from io import BytesIO
+import zipfile # 引入zip库用于打包下载
 
 # --- 1. 页面基础配置 ---
 st.set_page_config(page_title="安安边框", page_icon="🐽", layout="centered")
@@ -10,72 +11,67 @@ style_css = """
 <style>
     /* === 全局配色与背景 === */
     .stApp {
-        background-color: #F9FAFB; /* 极淡的冷灰白，比米黄更清爽 */
-        color: #2C3E50; /* 深蓝灰文字 */
-        background-image: radial-gradient(#E5E7EB 1px, transparent 1px); /* 极细的背景噪点 */
+        background-color: #F9FAFB;
+        color: #2C3E50;
+        background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
         background-size: 20px 20px;
     }
 
-    /* === 1. 强化标题层级 === */
+    /* === 标题层级 === */
     h1 {
         font-family: "Source Han Sans CN", "Microsoft YaHei", "PingFang SC", sans-serif !important;
-        font-weight: 800; /* 加粗 */
+        font-weight: 800;
         color: #2C3E50 !important;
-        font-size: 42px !important; /* 放大字号 */
+        font-size: 42px !important;
         text-align: center;
         margin-bottom: 0px;
         letter-spacing: -1px;
-        text-shadow: 2px 2px 0px rgba(255,255,255,1); /* 白色硬投影，增加立体感 */
+        text-shadow: 2px 2px 0px rgba(255,255,255,1);
     }
     
-    /* 自定义副标题样式 */
     .subtitle {
         font-family: "Source Han Sans CN", "Microsoft YaHei", sans-serif;
-        font-weight: 300; /* 极细 */
+        font-weight: 300;
         font-size: 16px;
-        color: #95A5A6; /* 浅灰 */
+        color: #95A5A6;
         text-align: center;
         margin-top: 10px;
-        margin-bottom: 50px; /* 增加与上传区的间距 (呼吸感) */
+        margin-bottom: 50px;
         letter-spacing: 2px;
     }
 
-    /* === 2. 优化上传区域 (交互质感) === */
+    /* === 上传区域 (交互质感) === */
     [data-testid='stFileUploader'] {
         background-color: rgba(255, 255, 255, 0.6);
-        border: 2px dashed #CFD8DC; /* 默认浅灰虚线 */
-        border-radius: 12px; /* 圆角 */
+        border: 2px dashed #CFD8DC;
+        border-radius: 12px;
         padding: 40px 20px;
-        /* 内部细网格纹理 */
         background-image: linear-gradient(rgba(123, 141, 153, 0.05) 1px, transparent 1px),
                           linear-gradient(90deg, rgba(123, 141, 153, 0.05) 1px, transparent 1px);
         background-size: 20px 20px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    
-    /* Hover 状态：变为实线主题色边框 */
     [data-testid='stFileUploader']:hover {
-        border-color: #7B8D99; /* 雾霾蓝 */
+        border-color: #7B8D99;
         border-style: solid; 
         background-color: rgba(255, 255, 255, 1);
         box-shadow: 0 10px 30px rgba(123, 141, 153, 0.15);
         transform: translateY(-2px);
     }
-    
     [data-testid='stFileUploader'] label { display: none; }
 
-    /* === 按钮汉化与美化 (雾霾蓝主题) === */
+    /* === 按钮美化 === */
     [data-testid='stFileUploader'] [data-testid='baseButton-secondary'] {
         visibility: hidden;
         position: relative;
-        width: 160px !important; /* 稍微加宽 */
+        width: 160px !important;
     }
     [data-testid='stFileUploader'] [data-testid='baseButton-secondary']::after {
         content: "浏览本地文件";
         visibility: visible;
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #7B8D99; /* 雾霾蓝底色 */
+        background-color: #7B8D99;
         color: #FFFFFF;
         border-radius: 6px;
         display: flex;
@@ -88,9 +84,8 @@ style_css = """
         box-shadow: 0 2px 5px rgba(123, 141, 153, 0.3);
         transition: all 0.2s;
     }
-    /* 按钮 Hover */
     [data-testid='stFileUploader'] [data-testid='baseButton-secondary']:hover::after {
-        background-color: #60707A; /* 深一点的蓝灰 */
+        background-color: #60707A;
         transform: scale(1.02);
     }
 
@@ -100,16 +95,14 @@ style_css = """
     [data-testid='stFileUploader'] section > div > div > div {
         display: none !important;
     }
-    /* 增加图标大小和颜色 */
     [data-testid='stFileUploader'] section > div > svg {
         color: #95A5A6 !important;
         width: 40px !important;
         height: 40px !important;
         margin-bottom: 10px;
     }
-    /* 新的引导文案 */
     [data-testid='stFileUploader'] section > div > div::before {
-        content: "点击或拖拽图片到这里";
+        content: "点击或拖拽多张图片到这里 (支持批量)"; /* 修改文案提示批量 */
         color: #7B8D99; 
         font-family: "Microsoft YaHei", sans-serif;
         font-size: 15px;
@@ -117,19 +110,15 @@ style_css = """
         display: block;
     }
 
-    /* === 3. 效果演示区 (拍立得风格) === */
-    /* 给演示图片加统一的白边和阴影 */
+    /* === 图片与演示区 === */
     img { 
         border: 10px solid #FFFFFF;
         border-radius: 4px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
         transition: transform 0.3s;
     }
-    img:hover {
-        transform: scale(1.01);
-    }
+    img:hover { transform: scale(1.01); }
     
-    /* 图片下方的标签卡片 */
     .img-label {
         background-color: #E8ECEF;
         color: #60707A;
@@ -139,13 +128,13 @@ style_css = """
         font-weight: bold;
         text-align: center;
         width: fit-content;
-        margin: 15px auto 0 auto; /* 居中 */
+        margin: 15px auto 0 auto;
         letter-spacing: 1px;
     }
 
     /* === 下载按钮 === */
     div.stButton > button {
-        background: linear-gradient(135deg, #7B8D99 0%, #60707A 100%); /* 渐变蓝灰 */
+        background: linear-gradient(135deg, #7B8D99 0%, #60707A 100%);
         color: #FFFFFF !important;
         border: none;
         border-radius: 8px;
@@ -163,15 +152,13 @@ style_css = """
         box-shadow: 0 12px 25px rgba(123, 141, 153, 0.5);
     }
 
-    /* === 布局调整 === */
+    /* === 布局 === */
     .stStatus { 
         background-color: #FFFFFF !important; 
         border: 1px solid #E5E7EB !important; 
         color: #60707A !important; 
         border-radius: 8px;
     }
-    
-    /* 底部文字居中 */
     .bottom-text {
         text-align: center;
         color: #BDC3C7;
@@ -179,8 +166,6 @@ style_css = """
         margin-top: 40px;
         font-weight: 300;
     }
-
-    /* 隐藏默认元素 */
     #MainMenu, footer, header {visibility: hidden;}
 </style>
 """
@@ -196,112 +181,171 @@ PARAMS = {
     'shadow_offset': 0
 }
 
+# --- 核心处理函数 (复用逻辑) ---
+def process_single_image(image, filename):
+    try:
+        image = image.convert("RGBA")
+        orig_w, orig_h = image.size
+        
+        base_size = min(orig_w, orig_h)
+        border_width = int(base_size * PARAMS['border_scale'])
+        border_width = max(border_width, 1)
+        new_w = orig_w + (2 * border_width)
+        new_h = orig_h + (2 * border_width)
+
+        # 背景
+        blurred_source = image.filter(ImageFilter.GaussianBlur(PARAMS['blur_radius']))
+        final_background = blurred_source.resize((new_w, new_h), Image.LANCZOS)
+
+        # 遮罩
+        mask = Image.new("L", (orig_w, orig_h), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.rounded_rectangle((0, 0, orig_w, orig_h), radius=PARAMS['corner_radius'], fill=255)
+
+        # 阴影
+        padding = int(PARAMS['shadow_blur'] * 3)
+        shadow_canvas_w = orig_w + (2 * padding)
+        shadow_canvas_h = orig_h + (2 * padding)
+        shadow_layer = Image.new("RGBA", (shadow_canvas_w, shadow_canvas_h), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow_layer)
+        shadow_draw.rounded_rectangle(
+            (padding, padding, padding + orig_w, padding + orig_h), 
+            radius=PARAMS['corner_radius'], 
+            fill=(0, 0, 0, 255)
+        )
+        shadow_blurred = shadow_layer.filter(ImageFilter.GaussianBlur(PARAMS['shadow_blur']))
+        r, g, b, a = shadow_blurred.split()
+        a = a.point(lambda i: i * PARAMS['shadow_opacity'])
+        shadow_final = Image.merge("RGBA", (r, g, b, a))
+        shadow_pos = (
+            border_width + PARAMS['shadow_offset'] - padding, 
+            border_width + PARAMS['shadow_offset'] - padding
+        )
+
+        # 合成
+        final_image = final_background.copy()
+        final_image.paste(shadow_final, shadow_pos, mask=shadow_final)
+        final_image.paste(image, (border_width, border_width), mask=mask)
+        
+        return final_image
+    except Exception as e:
+        return None
+
 # --- 4. 界面布局 ---
-
-# 标题 (加粗, 深色)
-st.markdown("<h1>欢迎使用安安边框</h1>", unsafe_allow_html=True)
-
-# 副标题 (极细, 浅灰, 增加间距)
+st.markdown("<h1>安安边框</h1>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>一键生成自适应模糊边框，打造画廊级质感</div>", unsafe_allow_html=True)
 
 # --- 5. 主体逻辑 ---
-uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
+# 开启多文件上传 accept_multiple_files=True
+uploaded_files = st.file_uploader(" ", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-if uploaded_file is None:
-    # --- 底部演示区 (留白增加) ---
-    
-    # 使用空白占位符增加间距 (50px)
+# 如果没有上传文件 -> 显示演示区
+if not uploaded_files:
     st.markdown("<div style='height: 50px;'></div>", unsafe_allow_html=True)
-    
-    # 演示区布局
     col_a, col_b = st.columns(2)
-    
     with col_a:
         st.image("demo_original.jpg", use_container_width=True)
-        # 标签组件
         st.markdown("<div class='img-label'>原图 ORIGINAL</div>", unsafe_allow_html=True)
-                 
     with col_b:
         st.image("demo_processed.png", use_container_width=True)
-        # 标签组件 (高亮色)
         st.markdown("<div class='img-label' style='background-color: #D6EAF8; color: #34495E;'>效果 EFFECT</div>", unsafe_allow_html=True)
-    
-    # 底部提示文字 (居中, 小字)
     st.markdown("<div class='bottom-text'>上传照片，即刻生成同款画廊级质感</div>", unsafe_allow_html=True)
 
+# 如果上传了文件 -> 进入处理流程
 else:
-    # ... 已上传后的逻辑 ...
-    try:
-        original_image = Image.open(uploaded_file).convert("RGBA")
-        orig_w, orig_h = original_image.size
-
-        # 状态栏也优化一下文案
-        with st.status("正在进行影像处理...", expanded=True) as status:
-            base_size = min(orig_w, orig_h)
-            border_width = int(base_size * PARAMS['border_scale'])
-            border_width = max(border_width, 1)
-            new_w = orig_w + (2 * border_width)
-            new_h = orig_h + (2 * border_width)
-
-            st.write("构建雾感背景...")
-            blurred_source = original_image.filter(ImageFilter.GaussianBlur(PARAMS['blur_radius']))
-            final_background = blurred_source.resize((new_w, new_h), Image.LANCZOS)
-
-            mask = Image.new("L", (orig_w, orig_h), 0)
-            draw = ImageDraw.Draw(mask)
-            draw.rounded_rectangle((0, 0, orig_w, orig_h), radius=PARAMS['corner_radius'], fill=255)
-
-            st.write("渲染立体光影...")
-            padding = int(PARAMS['shadow_blur'] * 3)
-            shadow_canvas_w = orig_w + (2 * padding)
-            shadow_canvas_h = orig_h + (2 * padding)
-            shadow_layer = Image.new("RGBA", (shadow_canvas_w, shadow_canvas_h), (0, 0, 0, 0))
-            shadow_draw = ImageDraw.Draw(shadow_layer)
-            shadow_draw.rounded_rectangle(
-                (padding, padding, padding + orig_w, padding + orig_h), 
-                radius=PARAMS['corner_radius'], 
-                fill=(0, 0, 0, 255)
-            )
-            shadow_blurred = shadow_layer.filter(ImageFilter.GaussianBlur(PARAMS['shadow_blur']))
-            r, g, b, a = shadow_blurred.split()
-            a = a.point(lambda i: i * PARAMS['shadow_opacity'])
-            shadow_final = Image.merge("RGBA", (r, g, b, a))
-            shadow_pos = (
-                border_width + PARAMS['shadow_offset'] - padding, 
-                border_width + PARAMS['shadow_offset'] - padding
-            )
-
-            final_image = final_background.copy()
-            final_image.paste(shadow_final, shadow_pos, mask=shadow_final)
-            final_image.paste(original_image, (border_width, border_width), mask=mask)
-
-            buf = BytesIO()
-            final_image.save(buf, format="PNG")
-            byte_im = buf.getvalue()
+    # === 场景 A：单张模式 (保持原有的大图体验) ===
+    if len(uploaded_files) == 1:
+        file = uploaded_files[0]
+        try:
+            original_image = Image.open(file)
             
-            status.update(label="处理完成", state="complete", expanded=False)
+            with st.status("正在进行影像处理...", expanded=True) as status:
+                st.write("渲染立体光影...")
+                final_image = process_single_image(original_image, file.name)
+                
+                buf = BytesIO()
+                final_image.save(buf, format="PNG")
+                byte_im = buf.getvalue()
+                status.update(label="处理完成", state="complete", expanded=False)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.image(final_image, use_container_width=True)
-        # 结果图下方也加个标签
-        st.markdown("<div class='img-label' style='background-color: #D6EAF8; color: #34495E;'>成片 RESULT</div>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            st.download_button(
-                label="保存高清大图",
-                data=byte_im,
-                file_name="texture_border_art.png",
-                mime="image/png",
-                type="primary",
-                use_container_width=True
-            )
-        
-        # 底部也加上版权
-        st.markdown("<div class='bottom-text'>Designed for Photography · 2026</div>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.image(final_image, use_container_width=True)
+            st.markdown("<div class='img-label' style='background-color: #D6EAF8; color: #34495E;'>成片 RESULT</div>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c2:
+                # 保持单张直接下载 PNG
+                output_name = f"framed_{file.name.split('.')[0]}.png"
+                st.download_button(
+                    label="保存高清大图",
+                    data=byte_im,
+                    file_name=output_name,
+                    mime="image/png",
+                    type="primary",
+                    use_container_width=True
+                )
+        except Exception as e:
+            st.error(f"处理图片时发生错误: {e}")
 
-    except Exception as e:
-        st.error(f"发生错误：{e}")
+    # === 场景 B：批量模式 (改为打包下载) ===
+    else:
+        try:
+            processed_images = [] # 存储结果用于展示
+            zip_buffer = BytesIO() # 内存中的ZIP包
+            
+            with st.status(f"正在批量处理 {len(uploaded_files)} 张照片...", expanded=True) as status:
+                progress_bar = st.progress(0)
+                
+                with zipfile.ZipFile(zip_buffer, "w") as zf:
+                    for i, file in enumerate(uploaded_files):
+                        st.write(f"正在处理: {file.name}...")
+                        
+                        img = Image.open(file)
+                        res_img = process_single_image(img, file.name)
+                        
+                        if res_img:
+                            # 1. 保存到 ZIP
+                            img_byte_arr = BytesIO()
+                            res_img.save(img_byte_arr, format='PNG')
+                            # 在zip中的文件名
+                            zf.writestr(f"framed_{file.name.split('.')[0]}.png", img_byte_arr.getvalue())
+                            
+                            # 2. 存入列表用于预览 (只存缩略图以防内存爆炸)
+                            # 为了展示美观，我们不缩放，直接存原图对象，Streamlit会自动优化显示
+                            processed_images.append(res_img)
+                        
+                        # 更新进度条
+                        progress_bar.progress((i + 1) / len(uploaded_files))
+                
+                status.update(label="批量处理完成！", state="complete", expanded=False)
 
+            # --- 批量下载按钮 (放在最上方方便点击) ---
+            st.markdown("<br>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c2:
+                st.download_button(
+                    label=f"📦 打包下载全部 ({len(uploaded_files)}张)",
+                    data=zip_buffer.getvalue(),
+                    file_name="anan_framed_photos.zip",
+                    mime="application/zip",
+                    type="primary",
+                    use_container_width=True
+                )
+            
+            # --- 预览画廊 (使用 Columns 网格展示) ---
+            st.markdown("### 🖼️ 处理预览")
+            st.markdown("---")
+            
+            # 每行显示 2 张图
+            cols = st.columns(2)
+            for idx, img in enumerate(processed_images):
+                with cols[idx % 2]:
+                    st.image(img, use_container_width=True)
+                    st.markdown(f"<div class='img-label' style='font-size:10px; margin-bottom:20px;'>{idx+1}</div>", unsafe_allow_html=True)
 
+        except Exception as e:
+            st.error(f"批量处理时发生错误: {e}")
+
+    # 底部版权
+    st.markdown("<div class='bottom-text'>Designed for Photography · 2026</div>", unsafe_allow_html=True)
