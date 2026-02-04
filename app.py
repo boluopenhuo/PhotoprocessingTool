@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image, ImageFilter, ImageDraw
 from io import BytesIO
+import requests
 
 # --- 1. 页面基础配置 ---
 st.set_page_config(page_title="极简艺术工坊", page_icon="🍂", layout="centered")
@@ -10,58 +11,63 @@ gallery_style = """
 <style>
     /* === 全局背景：米白/羊皮纸质感 === */
     .stApp {
-        background-color: #FAF9F6; /* 暖米白 */
-        color: #4A4036; /* 深暖咖色文字 */
+        background-color: #FAF9F6;
+        color: #4A4036;
     }
     
-    /* === 字体系统：衬线体带来的文艺感 === */
+    /* === 字体系统 === */
     h1 {
-        font-family: "Songti SC", "SimSun", "Times New Roman", serif !important;
+        font-family: "Songti SC", "SimSun", serif !important;
         color: #2C241B !important;
         font-weight: 600;
-        letter-spacing: 2px; /* 增加字间距，更有呼吸感 */
+        letter-spacing: 2px;
         text-align: center;
         padding-bottom: 10px;
-        border-bottom: 1px solid #E0DCD6; /* 标题下加一条细线 */
+        border-bottom: 1px solid #E0DCD6;
     }
     
-    .stMarkdown p {
+    /* 通用文字样式 */
+    .stMarkdown p, .stMarkdown h4 {
         font-family: "Songti SC", "SimSun", serif !important;
+        text-align: center;
         color: #6B6158 !important;
-        text-align: center; /* 居中排版 */
-        font-size: 16px;
+    }
+    
+    /* 演示区的标题 */
+    h4 {
+        margin-top: 30px;
+        font-weight: normal;
+        font-size: 18px;
+        letter-spacing: 4px;
+        opacity: 0.8;
     }
 
-    /* === 上传组件：极简画框风格 === */
+    /* === 上传组件：画框风格 === */
     [data-testid='stFileUploader'] {
         background-color: #FFFFFF;
-        border: 1px dashed #C4Bcb0; /* 浅卡其色边框 */
-        border-radius: 4px; /* 直角微圆，更像画框 */
+        border: 1px dashed #C4Bcb0;
+        border-radius: 4px;
         padding: 40px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* 极淡的阴影 */
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
     }
     [data-testid='stFileUploader']:hover {
-        border-color: #78866B; /* 悬停变为豆沙绿 */
+        border-color: #78866B;
         background-color: #FCFCFA;
     }
-    [data-testid='stFileUploader'] label {
-        display: none;
-    }
+    [data-testid='stFileUploader'] label { display: none; }
 
-    /* === 🔥 汉化补丁 (适配浅色主题) === */
-    
-    /* 1. 按钮样式 */
+    /* === 🔥 汉化补丁 (保持不变) === */
     [data-testid='stFileUploader'] button {
         visibility: hidden;
         position: relative;
         width: 140px !important;
     }
     [data-testid='stFileUploader'] button::after {
-        content: "选择影像文件"; /* 文案更文艺一点 */
+        content: "选择影像文件";
         visibility: visible;
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #F0EEE9; /* 浅灰底 */
+        background-color: #F0EEE9;
         color: #5C5248;
         border-radius: 2px;
         display: flex;
@@ -79,15 +85,14 @@ gallery_style = """
         color: #2C241B;
     }
 
-    /* 2. 提示文字隐藏与重写 */
+    /* 隐藏文字与重写 */
     [data-testid='stFileUploader'] section > div > div > span,
     [data-testid='stFileUploader'] small,
     [data-testid='stFileUploader'] section > div > div > div {
         display: none !important;
     }
-
     [data-testid='stFileUploader'] section > div > div::before {
-        content: "将照片轻置于此"; /* 文案更文艺 */
+        content: "将照片轻置于此";
         color: #9C9288; 
         font-family: "Songti SC", serif;
         font-size: 15px;
@@ -95,8 +100,6 @@ gallery_style = """
         margin-top: 10px; 
         font-weight: normal;
     }
-    
-    /* 图标颜色适配 */
     [data-testid='stFileUploader'] section > div > svg {
         color: #C4Bcb0 !important;
         fill: #C4Bcb0 !important;
@@ -104,12 +107,12 @@ gallery_style = """
         height: 30px;
     }
 
-    /* === 下载按钮：莫兰迪豆沙绿 === */
+    /* === 下载按钮 === */
     div.stButton > button {
-        background-color: #78866B; /* 莫兰迪绿 */
+        background-color: #78866B;
         color: #FFFFFF !important;
         border: none;
-        border-radius: 4px; /* 微圆角 */
+        border-radius: 4px;
         padding: 12px 30px;
         font-size: 16px;
         font-family: "Songti SC", serif;
@@ -125,7 +128,7 @@ gallery_style = """
         box-shadow: 0 6px 15px rgba(120, 134, 107, 0.4);
     }
 
-    /* === 状态栏与图片 === */
+    /* === 图片与布局 === */
     .stStatus { 
         background-color: #FFFFFF !important; 
         border: 1px solid #E0DCD6 !important; 
@@ -133,10 +136,18 @@ gallery_style = """
         font-family: "Songti SC", serif;
     }
     
-    /* 图片增加类似画框的白边和阴影 */
+    /* 给所有展示的图片加白边，模拟相框 */
     img { 
         border: 8px solid #FFFFFF;
         box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+    }
+    
+    /* 分隔线样式 */
+    hr {
+        border-color: #E0DCD6;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        opacity: 0.5;
     }
 
     #MainMenu, footer, header {visibility: hidden;}
@@ -157,22 +168,40 @@ PARAMS = {
 # --- 4. 界面布局 ---
 st.title("云端·艺术工坊")
 st.markdown("定格光影 · 赋予照片呼吸感")
-st.markdown("<br>", unsafe_allow_html=True) # 增加一点留白
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- 5. 主体逻辑 ---
 uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is None:
-    pass # 画廊风不需要额外的 info 提示，保持留白美感
+    # --- 这里是新增的底部展示区 (只在未上传时显示) ---
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---") # 优雅的分割线
+    st.markdown("#### 🎞️ 效果演示") # 小标题
+    
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        # 这里放原图示例 (URL)
+        st.image("https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", 
+                 caption="原片直出", use_container_width=True)
+                 
+    with col_b:
+        # 这里放处理后的效果图 (为了演示，我这里暂时放了一张类似的图)
+        # 💡 【重要】请在你的工具做好后，截一张图，把下面这个链接换成你自己的截图链接！
+        st.image("https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", 
+                 caption="艺术装裱", use_container_width=True)
+    
+    st.markdown("<br><p style='font-size:12px; opacity:0.6'>上传照片，即可获得右侧同款画廊级质感</p>", unsafe_allow_html=True)
 
 else:
+    # ... 已上传后的逻辑保持不变 ...
     try:
         original_image = Image.open(uploaded_file).convert("RGBA")
         orig_w, orig_h = original_image.size
 
         with st.status("正在装裱影像...", expanded=True) as status:
-            
-            # --- 算法逻辑 ---
             base_size = min(orig_w, orig_h)
             border_width = int(base_size * PARAMS['border_scale'])
             border_width = max(border_width, 1)
@@ -221,7 +250,6 @@ else:
         st.image(final_image, use_container_width=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 使用 Columns 居中下载按钮，保持画廊的平衡感
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
             st.download_button(
