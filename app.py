@@ -3,124 +3,146 @@ from PIL import Image, ImageFilter, ImageDraw
 from io import BytesIO
 
 # --- 1. 页面基础配置 ---
-st.set_page_config(page_title="极简艺术相框", page_icon="🎨", layout="centered")
+st.set_page_config(page_title="极简艺术工坊", page_icon="🍂", layout="centered")
 
-# --- 2. 核心视觉样式 (含强力汉化补丁) ---
-nft_style = """
+# --- 2. 核心视觉样式 (画廊风定制) ---
+gallery_style = """
 <style>
-    /* === 全局背景与基础样式 === */
+    /* === 全局背景：米白/羊皮纸质感 === */
     .stApp {
-        background-color: #0E1117;
-        background-image: radial-gradient(circle at 50% 0%, #1f1f1f 0%, #0E1117 60%);
+        background-color: #FAF9F6; /* 暖米白 */
+        color: #4A4036; /* 深暖咖色文字 */
     }
-    h1, .stMarkdown p {
-        font-family: "Microsoft YaHei", sans-serif !important; 
+    
+    /* === 字体系统：衬线体带来的文艺感 === */
+    h1 {
+        font-family: "Songti SC", "SimSun", "Times New Roman", serif !important;
+        color: #2C241B !important;
+        font-weight: 600;
+        letter-spacing: 2px; /* 增加字间距，更有呼吸感 */
+        text-align: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #E0DCD6; /* 标题下加一条细线 */
     }
-    h1 { color: #FFFFFF !important; text-shadow: 0 0 20px rgba(255, 255, 255, 0.2); }
-    .stMarkdown p { color: #8b949e !important; }
+    
+    .stMarkdown p {
+        font-family: "Songti SC", "SimSun", serif !important;
+        color: #6B6158 !important;
+        text-align: center; /* 居中排版 */
+        font-size: 16px;
+    }
 
-    /* === 上传组件美化 === */
+    /* === 上传组件：极简画框风格 === */
     [data-testid='stFileUploader'] {
-        background-color: #161B22;
-        border: 1px dashed #30363d;
-        border-radius: 20px;
-        padding: 20px;
-        transition: all 0.3s ease;
+        background-color: #FFFFFF;
+        border: 1px dashed #C4Bcb0; /* 浅卡其色边框 */
+        border-radius: 4px; /* 直角微圆，更像画框 */
+        padding: 40px 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* 极淡的阴影 */
     }
     [data-testid='stFileUploader']:hover {
-        border-color: #58a6ff;
-        background-color: #1c2128;
+        border-color: #78866B; /* 悬停变为豆沙绿 */
+        background-color: #FCFCFA;
     }
-    /* 隐藏外部 Label */
     [data-testid='stFileUploader'] label {
         display: none;
     }
 
-    /* === 🔥 核心汉化补丁 V2.0 (更强力的覆盖) === */
+    /* === 🔥 汉化补丁 (适配浅色主题) === */
     
-    /* 1. 右边按钮 (你已经成功了，保持原样) */
+    /* 1. 按钮样式 */
     [data-testid='stFileUploader'] button {
         visibility: hidden;
         position: relative;
-        width: 120px !important;
+        width: 140px !important;
     }
     [data-testid='stFileUploader'] button::after {
-        content: "浏览本地文件";
+        content: "选择影像文件"; /* 文案更文艺一点 */
         visibility: visible;
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #ffffff;
-        color: #000000;
-        border-radius: 8px;
+        background-color: #F0EEE9; /* 浅灰底 */
+        color: #5C5248;
+        border-radius: 2px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
+        font-family: "Songti SC", serif;
         font-size: 14px;
+        letter-spacing: 1px;
         cursor: pointer;
-        border: 1px solid #ccc;
+        border: none;
+        transition: all 0.3s;
+    }
+    [data-testid='stFileUploader'] button:hover::after {
+        background-color: #E6E2DC;
+        color: #2C241B;
     }
 
-    /* 2. 左边文字 (关键修改点) */
-    
-    /* 第一步：把原来所有的英文文字元素彻底隐藏 */
-    /* span 对应 "Drag and drop..." */
-    [data-testid='stFileUploader'] section > div > div > span {
-        display: none !important;
-    }
-    /* small 对应 "Limit 200MB..." */
-    [data-testid='stFileUploader'] small {
-        display: none !important;
-    }
-    /* 为了防止漏网之鱼，把 div 下的第一层 div 也隐藏（某些版本可能是 div） */
+    /* 2. 提示文字隐藏与重写 */
+    [data-testid='stFileUploader'] section > div > div > span,
+    [data-testid='stFileUploader'] small,
     [data-testid='stFileUploader'] section > div > div > div {
         display: none !important;
     }
 
-    /* 第二步：在空白处重新写上中文 */
-    /* 我们直接在文字容器上画字 */
     [data-testid='stFileUploader'] section > div > div::before {
-        content: "支持拖拽照片到这里"; 
-        color: #c9d1d9; 
-        font-size: 16px;
-        font-weight: bold;
+        content: "将照片轻置于此"; /* 文案更文艺 */
+        color: #9C9288; 
+        font-family: "Songti SC", serif;
+        font-size: 15px;
         display: block;
-        margin-top: 5px; 
+        margin-top: 10px; 
+        font-weight: normal;
     }
     
-    /* 修复图标颜色 (因为我们没有隐藏图标的父级，图标应该还在，这里加固一下) */
+    /* 图标颜色适配 */
     [data-testid='stFileUploader'] section > div > svg {
-        color: #58a6ff !important;
-        fill: #58a6ff !important;
-        margin-right: 10px; /* 给图标和文字拉开点距离 */
+        color: #C4Bcb0 !important;
+        fill: #C4Bcb0 !important;
+        width: 30px;
+        height: 30px;
     }
 
-    /* === 下载按钮样式 === */
+    /* === 下载按钮：莫兰迪豆沙绿 === */
     div.stButton > button {
-        background: linear-gradient(90deg, #FDC830 0%, #F37335 100%);
-        color: #1f1f1f !important;
-        font-weight: 800 !important;
+        background-color: #78866B; /* 莫兰迪绿 */
+        color: #FFFFFF !important;
         border: none;
-        border-radius: 50px;
-        padding: 15px 40px;
-        font-size: 18px;
-        box-shadow: 0 4px 15px rgba(243, 115, 53, 0.4);
+        border-radius: 4px; /* 微圆角 */
+        padding: 12px 30px;
+        font-size: 16px;
+        font-family: "Songti SC", serif;
+        letter-spacing: 2px;
+        box-shadow: 0 4px 10px rgba(120, 134, 107, 0.3);
         transition: all 0.3s ease;
         width: 100%;
-        font-family: "Microsoft YaHei", sans-serif;
+        margin-top: 20px;
     }
     div.stButton > button:hover {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 8px 25px rgba(243, 115, 53, 0.6);
+        background-color: #637058;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(120, 134, 107, 0.4);
     }
 
-    /* === 其他优化 === */
-    .stStatus { background-color: #161B22 !important; border: 1px solid #30363d !important; color: #c9d1d9 !important; border-radius: 12px; }
-    img { border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    /* === 状态栏与图片 === */
+    .stStatus { 
+        background-color: #FFFFFF !important; 
+        border: 1px solid #E0DCD6 !important; 
+        color: #5C5248 !important; 
+        font-family: "Songti SC", serif;
+    }
+    
+    /* 图片增加类似画框的白边和阴影 */
+    img { 
+        border: 8px solid #FFFFFF;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+    }
+
     #MainMenu, footer, header {visibility: hidden;}
 </style>
 """
-st.markdown(nft_style, unsafe_allow_html=True)
+st.markdown(gallery_style, unsafe_allow_html=True)
 
 # --- 3. 核心参数 ---
 PARAMS = {
@@ -133,26 +155,22 @@ PARAMS = {
 }
 
 # --- 4. 界面布局 ---
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.title("极简艺术工坊")
-    st.markdown("上传照片，一键生成画廊级光影大片。")
+st.title("云端·艺术工坊")
+st.markdown("定格光影 · 赋予照片呼吸感")
+st.markdown("<br>", unsafe_allow_html=True) # 增加一点留白
 
 # --- 5. 主体逻辑 ---
-# label 设为空，因为我们已经在 CSS 里把 label 隐藏了，靠 box 内部的中文提示即可
 uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is None:
-    st.markdown("<br>", unsafe_allow_html=True)
-    # 用 info 做一个补充提示，万一 CSS 加载慢了也能看到
-    st.info("👆 请点击上方区域选择照片，或直接拖拽图片")
+    pass # 画廊风不需要额外的 info 提示，保持留白美感
 
 else:
     try:
         original_image = Image.open(uploaded_file).convert("RGBA")
         orig_w, orig_h = original_image.size
 
-        with st.status("🚀 正在渲染光影效果...", expanded=True) as status:
+        with st.status("正在装裱影像...", expanded=True) as status:
             
             # --- 算法逻辑 ---
             base_size = min(orig_w, orig_h)
@@ -161,7 +179,7 @@ else:
             new_w = orig_w + (2 * border_width)
             new_h = orig_h + (2 * border_width)
 
-            st.write("🎨 生成磨砂背景...")
+            st.write("渲染柔光背景...")
             blurred_source = original_image.filter(ImageFilter.GaussianBlur(PARAMS['blur_radius']))
             final_background = blurred_source.resize((new_w, new_h), Image.LANCZOS)
 
@@ -169,7 +187,7 @@ else:
             draw = ImageDraw.Draw(mask)
             draw.rounded_rectangle((0, 0, orig_w, orig_h), radius=PARAMS['corner_radius'], fill=255)
 
-            st.write("🌑 添加立体投影...")
+            st.write("添加空气感阴影...")
             padding = int(PARAMS['shadow_blur'] * 3)
             shadow_canvas_w = orig_w + (2 * padding)
             shadow_canvas_h = orig_h + (2 * padding)
@@ -197,21 +215,23 @@ else:
             final_image.save(buf, format="PNG")
             byte_im = buf.getvalue()
             
-            status.update(label="✨ 渲染完成！", state="complete", expanded=False)
+            status.update(label="装裱完成", state="complete", expanded=False)
 
-        st.markdown("### 效果预览")
+        st.markdown("<br>", unsafe_allow_html=True)
         st.image(final_image, use_container_width=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
-        st.download_button(
-            label="⬇️ 保存高清艺术成片",
-            data=byte_im,
-            file_name="art_frame_output.png",
-            mime="image/png",
-            type="primary",
-            use_container_width=True
-        )
+        # 使用 Columns 居中下载按钮，保持画廊的平衡感
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            st.download_button(
+                label="收藏这幅作品",
+                data=byte_im,
+                file_name="gallery_art.png",
+                mime="image/png",
+                type="primary",
+                use_container_width=True
+            )
 
     except Exception as e:
         st.error(f"发生错误：{e}")
-
