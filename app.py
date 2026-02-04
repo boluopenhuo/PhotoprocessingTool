@@ -4,7 +4,7 @@ from io import BytesIO
 import zipfile
 
 # --- 1. 页面基础配置 ---
-st.set_page_config(page_title="安安边框", page_icon="", layout="centered")
+st.set_page_config(page_title="安安边框", page_icon="🐽", layout="centered")
 
 # --- 2. 核心视觉样式 (深海渐变定制版) ---
 style_css = """
@@ -396,3 +396,4 @@ else:
 
     # 底部版权
     st.markdown("<div class='bottom-text'>Designed for Photography · 2026</div>", unsafe_allow_html=True)
+
