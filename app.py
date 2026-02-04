@@ -199,10 +199,10 @@ PARAMS = {
 # --- 4. 界面布局 ---
 
 # 标题 (加粗, 深色)
-st.markdown("<h1>质感边框</h1>", unsafe_allow_html=True)
+st.markdown("<h1>欢迎使用安安边框</h1>", unsafe_allow_html=True)
 
 # 副标题 (极细, 浅灰, 增加间距)
-st.markdown("<div class='subtitle'>定格光影 · 赋予照片呼吸感</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>一键生成自适应模糊边框，打造画廊级质感</div>", unsafe_allow_html=True)
 
 # --- 5. 主体逻辑 ---
 uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
@@ -303,4 +303,5 @@ else:
 
     except Exception as e:
         st.error(f"发生错误：{e}")
+
 
