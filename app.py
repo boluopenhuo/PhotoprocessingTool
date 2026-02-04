@@ -185,11 +185,11 @@ if uploaded_file is None:
     with col_a:
         # 直接写刚才上传到 GitHub 的文件名
         # 注意：文件名必须完全一致，包括大小写！
-        st.image("demo_original", caption="原图", use_container_width=True)
+        st.image("demo_original。jpg", caption="原图", use_container_width=True)
                  
     with col_b:
         # 直接写文件名
-        st.image("demo_processed", caption="效果图", use_container_width=True)
+        st.image("demo_processed.png", caption="效果图", use_container_width=True)
     
     st.markdown("<br><p style='font-size:12px; opacity:0.6'>上传照片，即可获得右侧同款画廊级质感</p>", unsafe_allow_html=True)
 
@@ -261,3 +261,4 @@ else:
 
     except Exception as e:
         st.error(f"发生错误：{e}")
+
