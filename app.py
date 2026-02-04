@@ -288,64 +288,102 @@ else:
         except Exception as e:
             st.error(f"处理图片时发生错误: {e}")
 
-    # === 场景 B：批量模式 (改为打包下载) ===
+# === 场景 B：批量模式 (移动端优化版) ===
     else:
         try:
-            processed_images = [] # 存储结果用于展示
-            zip_buffer = BytesIO() # 内存中的ZIP包
+            processed_data = [] # 存储 (图片对象, 文件名)
+            zip_buffer = BytesIO()
             
-            with st.status(f"正在批量处理 {len(uploaded_files)} 张照片...", expanded=True) as status:
+            # 1. 批量处理逻辑
+            with st.status(f"正在为 {len(uploaded_files)} 张照片添加质感...", expanded=True) as status:
                 progress_bar = st.progress(0)
                 
                 with zipfile.ZipFile(zip_buffer, "w") as zf:
                     for i, file in enumerate(uploaded_files):
-                        st.write(f"正在处理: {file.name}...")
-                        
                         img = Image.open(file)
                         res_img = process_single_image(img, file.name)
                         
                         if res_img:
-                            # 1. 保存到 ZIP
+                            # 转为字节流
                             img_byte_arr = BytesIO()
                             res_img.save(img_byte_arr, format='PNG')
-                            # 在zip中的文件名
-                            zf.writestr(f"framed_{file.name.split('.')[0]}.png", img_byte_arr.getvalue())
+                            img_bytes = img_byte_arr.getvalue()
                             
-                            # 2. 存入列表用于预览 (只存缩略图以防内存爆炸)
-                            # 为了展示美观，我们不缩放，直接存原图对象，Streamlit会自动优化显示
-                            processed_images.append(res_img)
+                            # 存入 ZIP
+                            output_filename = f"framed_{file.name.split('.')[0]}.png"
+                            zf.writestr(output_filename, img_bytes)
+                            
+                            # 存入列表用于展示
+                            processed_data.append((res_img, output_filename, img_bytes))
                         
-                        # 更新进度条
                         progress_bar.progress((i + 1) / len(uploaded_files))
                 
-                status.update(label="批量处理完成！", state="complete", expanded=False)
+                status.update(label="全部处理完成！", state="complete", expanded=False)
 
-            # --- 批量下载按钮 (放在最上方方便点击) ---
+            # --- 2. 移动端优化展示区 ---
+            
             st.markdown("<br>", unsafe_allow_html=True)
-            c1, c2, c3 = st.columns([1, 2, 1])
-            with c2:
+            
+            # 顶部提示
+            st.markdown("""
+            <div style="background-color: #E8ECEF; padding: 10px; border-radius: 8px; color: #60707A; font-size: 13px; text-align: center; margin-bottom: 20px;">
+                💡 手机用户提示：<br>点击下方按钮直接下载，或 <b>长按图片</b> 保存到相册
+            </div>
+            """, unsafe_allow_html=True)
+
+            # 遍历展示每一张图 (流式布局)
+            for idx, (img, name, byte_data) in enumerate(processed_data):
+                # 卡片容器
+                with st.container():
+                    # 显示大图
+                    st.image(img, use_container_width=True)
+                    
+                    # 布局：左边序号，右边大大的下载按钮
+                    c1, c2 = st.columns([1, 3])
+                    
+                    with c1:
+                        # 序号标签
+                        st.markdown(f"""
+                        <div style="
+                            background-color: #F0F2F5; 
+                            color: #95A5A6; 
+                            padding: 12px 0; 
+                            text-align: center; 
+                            border-radius: 8px; 
+                            font-weight: bold;
+                            margin-top: 10px;">
+                            #{idx+1}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with c2:
+                        # 每一张图都有独立的下载按钮
+                        st.download_button(
+                            label=f"⬇️ 保存这张图片",
+                            data=byte_data,
+                            file_name=name,
+                            mime="image/png",
+                            key=f"btn_{idx}", # 必须设置唯一的 key
+                            type="secondary", # 使用次级样式，不抢视觉
+                            use_container_width=True
+                        )
+                    
+                    # 分割线
+                    st.markdown("<hr style='border:0; border-top:1px dashed #E5E7EB; margin: 30px 0;'>", unsafe_allow_html=True)
+
+            # --- 3. 底部依然保留 ZIP 下载 (作为备选) ---
+            with st.expander("📦 电脑端？点此一键打包下载 (.zip)"):
                 st.download_button(
-                    label=f"📦 打包下载全部 ({len(uploaded_files)}张)",
+                    label=f"下载压缩包 ({len(uploaded_files)}张)",
                     data=zip_buffer.getvalue(),
                     file_name="anan_framed_photos.zip",
                     mime="application/zip",
-                    type="primary",
                     use_container_width=True
                 )
-            
-            # --- 预览画廊 (使用 Columns 网格展示) ---
-            st.markdown("### 🖼️ 处理预览")
-            st.markdown("---")
-            
-            # 每行显示 2 张图
-            cols = st.columns(2)
-            for idx, img in enumerate(processed_images):
-                with cols[idx % 2]:
-                    st.image(img, use_container_width=True)
-                    st.markdown(f"<div class='img-label' style='font-size:10px; margin-bottom:20px;'>{idx+1}</div>", unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"批量处理时发生错误: {e}")
 
     # 底部版权
     st.markdown("<div class='bottom-text'>Designed for Photography · 2026</div>", unsafe_allow_html=True)
+
