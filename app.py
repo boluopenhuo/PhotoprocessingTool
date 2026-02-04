@@ -1,18 +1,44 @@
 import streamlit as st
 from PIL import Image, ImageFilter, ImageDraw
 from io import BytesIO
-import requests
 
 # --- 1. 页面基础配置 ---
 st.set_page_config(page_title="安安边框水印", page_icon="🍂", layout="centered")
 
-# --- 2. 核心视觉样式 (画廊风定制) ---
+# --- 2. 核心视觉样式 (画廊风定制 + 装修升级) ---
 gallery_style = """
 <style>
-    /* === 全局背景：米白/羊皮纸质感 === */
+    /* === 全局背景：米白 + 点阵纹理 + 氛围光晕 === */
     .stApp {
-        background-color: #FAF9F6;
+        background-color: #FAF9F6; /* 暖米白底色 */
         color: #4A4036;
+        /* 1. 点阵纹理：营造纸张质感 */
+        background-image: radial-gradient(#E0DCD6 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    /* 2. 氛围光晕 (通过伪元素实现) */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: -100px;
+        left: -100px;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(240, 230, 210, 0.6) 0%, rgba(250, 249, 246, 0) 70%);
+        z-index: -1;
+        pointer-events: none;
+    }
+    .stApp::after {
+        content: "";
+        position: fixed;
+        bottom: -100px;
+        right: -100px;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(200, 210, 190, 0.3) 0%, rgba(250, 249, 246, 0) 70%); /* 淡淡的豆沙绿光晕 */
+        z-index: -1;
+        pointer-events: none;
     }
     
     /* === 字体系统 === */
@@ -20,10 +46,10 @@ gallery_style = """
         font-family: "Songti SC", "SimSun", serif !important;
         color: #2C241B !important;
         font-weight: 600;
-        letter-spacing: 2px;
+        letter-spacing: 4px; /* 加大标题字间距，更有呼吸感 */
         text-align: center;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #E0DCD6;
+        margin-bottom: 5px;
+        text-shadow: 0 2px 0px rgba(255,255,255,0.8); /* 文字浮雕效果 */
     }
     
     .stMarkdown p, .stMarkdown h4 {
@@ -42,22 +68,23 @@ gallery_style = """
 
     /* === 上传组件：画框风格 === */
     [data-testid='stFileUploader'] {
-        background-color: #FFFFFF;
+        background-color: rgba(255, 255, 255, 0.8); /* 微透明，透出背景纹理 */
         border: 1px dashed #C4Bcb0;
         border-radius: 4px;
         padding: 40px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        backdrop-filter: blur(5px); /* 毛玻璃效果 */
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        transition: all 0.3s ease;
     }
     [data-testid='stFileUploader']:hover {
         border-color: #78866B;
-        background-color: #FCFCFA;
+        background-color: #FFFFFF;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+        transform: translateY(-2px);
     }
     [data-testid='stFileUploader'] label { display: none; }
 
-    /* === 🔥 汉化补丁修复版 (精准打击) === */
-    
-    /* 1. 仅针对“浏览文件”的主按钮进行汉化 */
-    /* 增加 [data-testid='baseButton-secondary'] 确保只选中主按钮，不选中删除按钮 */
+    /* === 🔥 汉化补丁修复版 === */
     [data-testid='stFileUploader'] [data-testid='baseButton-secondary'] {
         visibility: hidden;
         position: relative;
@@ -86,7 +113,7 @@ gallery_style = """
         color: #2C241B;
     }
 
-    /* 2. 提示文字隐藏与重写 */
+    /* 提示文字重写 */
     [data-testid='stFileUploader'] section > div > div > span,
     [data-testid='stFileUploader'] small,
     [data-testid='stFileUploader'] section > div > div > div {
@@ -140,11 +167,36 @@ gallery_style = """
         border: 8px solid #FFFFFF;
         box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
     }
-    hr {
-        border-color: #E0DCD6;
-        margin-top: 40px;
-        margin-bottom: 20px;
-        opacity: 0.5;
+    
+    /* 自定义分割线 (不再使用默认hr) */
+    .custom-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 40px 0;
+        opacity: 0.6;
+    }
+    .custom-divider::before, .custom-divider::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid #C4Bcb0;
+    }
+    .custom-divider span {
+        margin: 0 15px;
+        color: #C4Bcb0;
+        font-size: 14px;
+    }
+    
+    /* 底部页脚 */
+    .footer {
+        text-align: center;
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(196, 188, 176, 0.3);
+        color: #9C9288;
+        font-size: 12px;
+        font-family: "Songti SC", serif;
+        letter-spacing: 1px;
     }
 
     #MainMenu, footer, header {visibility: hidden;}
@@ -165,7 +217,7 @@ PARAMS = {
 # --- 4. 界面布局 ---
 st.title("质感边框")
 st.markdown("定格光影 · 赋予照片呼吸感")
-st.markdown("<br>", unsafe_allow_html=True)
+# 去掉原来的 br，用 padding 控制
 
 # --- 5. 主体逻辑 ---
 uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
@@ -173,25 +225,27 @@ uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"])
 if uploaded_file is None:
     # --- 底部展示区 ---
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("---") 
+    # 🌟 使用自定义的艺术分割线，代替 st.markdown("---")
+    st.markdown("""
+        <div class="custom-divider">
+            <span>✦</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown("#### 🎞️ 效果演示") 
     
     col_a, col_b = st.columns(2)
     
     with col_a:
-        # 直接写刚才上传到 GitHub 的文件名
-        # 注意：文件名必须完全一致，包括大小写！
         st.image("demo_original.jpg", caption="原图", use_container_width=True)
                  
     with col_b:
-        # 直接写文件名
         st.image("demo_processed.png", caption="效果图", use_container_width=True)
     
     st.markdown("<br><p style='font-size:12px; opacity:0.6'>上传照片，即可获得右侧同款画廊级质感</p>", unsafe_allow_html=True)
 
 else:
-    # ... 已上传后的逻辑保持不变 ...
+    # ... 已上传后的逻辑 ...
     try:
         original_image = Image.open(uploaded_file).convert("RGBA")
         orig_w, orig_h = original_image.size
@@ -259,6 +313,9 @@ else:
     except Exception as e:
         st.error(f"发生错误：{e}")
 
-
-
-
+# --- 6. 新增：优雅的页脚 ---
+st.markdown("""
+    <div class="footer">
+        Designed for Photography Lovers · 2026
+    </div>
+""", unsafe_allow_html=True)
