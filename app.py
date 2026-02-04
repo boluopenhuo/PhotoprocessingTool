@@ -3,7 +3,7 @@ from PIL import Image, ImageFilter, ImageDraw
 from io import BytesIO
 
 # --- 1. 页面基础配置 ---
-st.set_page_config(page_title="质感边框", page_icon="🌊", layout="centered")
+st.set_page_config(page_title="安安边框", page_icon="🐽", layout="centered")
 
 # --- 2. 核心视觉样式 (莫兰迪·雾霾蓝定制版) ---
 style_css = """
@@ -303,3 +303,4 @@ else:
 
     except Exception as e:
         st.error(f"发生错误：{e}")
+
