@@ -124,3 +124,15 @@ if uploaded_file is not None:
             buf = BytesIO()
             final_image.save(buf, format="PNG")
             byte_im = buf.getvalue()
+
+        # --- 结果展示 ---
+        st.success(f"处理完成！阴影已优化防裁切。")
+        st.image(final_image, caption="自然立体效果", use_container_width=True)
+        st.download_button(
+            label="⬇️ 下载处理后的图片", data=byte_im, file_name="processed_natural_shadow.png", mime="image/png", type="primary"
+        )
+
+    except Exception as e:
+        st.error(f"发生错误：{e}")
+else:
+    st.info("👆 请先在上方上传一张图片")
